@@ -89,7 +89,7 @@
     function avisar(texto){$("aviso").classList.remove("oculto");$("aviso").querySelector("span").textContent=texto}
     function mostrarChapaAtiva(){let painel=$("chapaAtiva");if(!painel){painel=document.createElement("div");painel.id="chapaAtiva";painel.className="chapaAtiva";painel.innerHTML='<span>Chapa ativa</span><strong></strong>';$("temaToggle").before(painel)}painel.querySelector("strong").textContent=chapaSessao==="1111111"?"Administrador":chapaSessao}
     function preencherPelaChapa(chapa){const c=baseCandidatos.find(x=>x.chapa===chapa);$("dadosEncontrados").classList.toggle("oculto",!c);if(!c)return false;$("candidato").value=c.nome||"";$("setor").value=c.setor||"";$("cargo").value=c.cargo||"";$("turno").value=c.turno||"";$("dadosEncontrados").textContent="Dados localizados e preenchidos automaticamente pela chapa Volkswagen.";return true}
-    function liberarAcesso(chapa){chapaSessao=chapa;acessoHistorico=chapa==="1111111";$("abaHistorico").classList.toggle("oculto",!acessoHistorico);$("abaBase").classList.toggle("oculto",!acessoHistorico);$("acesso").classList.add("oculto");$("aplicacao").classList.remove("oculto");mostrarChapaAtiva();limpar();abrir("form");requestAnimationFrame(ajustarCanvas)}
+    function liberarAcesso(chapa){chapaSessao=chapa;acessoHistorico=chapa==="1111111";$("abaFormulario").classList.toggle("oculto",acessoHistorico);$("abaHistorico").classList.toggle("oculto",!acessoHistorico);$("abaBase").classList.toggle("oculto",!acessoHistorico);$("acesso").classList.add("oculto");$("aplicacao").classList.remove("oculto");mostrarChapaAtiva();limpar();abrir(acessoHistorico?"history":"form");requestAnimationFrame(ajustarCanvas)}
     function limpar(){$("formulario").reset();$("numero").value=proximoNumero();$("data").value=hoje();$("chapa").value=acessoHistorico?"":chapaSessao;$("chapa").readOnly=!acessoHistorico;$("dadosEncontrados").classList.add("oculto");if(!acessoHistorico)preencherPelaChapa(chapaSessao);editando=null;limparAssinatura();$("tituloFormulario").textContent="Dados do candidato";$("textoSalvar").textContent="Finalizar inscrição";$("cancelar").classList.add("oculto")}
     function abrir(qual){if(qual!=="form"&&!acessoHistorico)return;const form=qual==="form",historico=qual==="history",base=qual==="base";$("formulario").classList.toggle("oculto",!form);$("historico").classList.toggle("oculto",!historico);$("baseVolkswagen").classList.toggle("oculto",!base);$("abaFormulario").classList.toggle("ativa",form);$("abaHistorico").classList.toggle("ativa",historico);$("abaBase").classList.toggle("ativa",base);if(historico)renderizar();if(base)renderizarBase()}
     function proximoNumero(){const d=new Date(),dois=n=>String(n).padStart(2,"0");return `${dois(d.getDate())}${dois(d.getHours())}${dois(d.getMinutes())}${dois(d.getSeconds())}`}
@@ -149,6 +149,14 @@
     @keyframes explodirRojes{0%,42%{transform:scale(.1);opacity:0}48%{opacity:1}78%{transform:scale(1.35);opacity:.8}100%{transform:scale(1.7);opacity:0}}
     @media(max-width:520px){.festaRojes{height:180px}.explosao:before,.explosao:after{inset:-28px;mask:radial-gradient(circle,transparent 0 17px,#000 18px 22px,transparent 23px)}}
     @media(prefers-reduced-motion:reduce){.rojao,.explosao{animation-duration:.7s}}
+    @media print{
+      html,body{background:#fff!important;color:#000!important;color-scheme:light!important;print-color-adjust:economy!important}
+      .folha,.folha *{color:#000!important;box-shadow:none!important;text-shadow:none!important}
+      .folha{background:#fff!important;border:1.5px solid #000!important}
+      .cabecalhoPdf,.cabecalhoPdf>*,.camposPdf,.camposPdf div,.camposPdf b,.assinatura,.assinatura span,.rodapePdf,.rodapePdf>div{background:#fff!important;border-color:#000!important}
+      .logoPdf img{background:#fff!important;filter:none!important}
+      .seloPdf{background:#fff!important;border:2px solid #000!important;color:#000!important}
+    }
   </style>
   <script>
     (function prepararAcessoEFesta(){
