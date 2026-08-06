@@ -196,6 +196,20 @@
   </style>
   <script>
     (function prepararAcessoEFesta(){
+      const tituloAplicacao=document.title;
+      const criarTituloPdf=registro=>{
+        const nome=String(registro?.candidato||"CANDIDATO")
+          .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+          .toUpperCase().replace(/[^A-Z0-9]+/g,"_")
+          .replace(/^_+|_+$/g,"").slice(0,100)||"CANDIDATO";
+        const chapa=String(registro?.chapa||"").replace(/\D/g,"");
+        return `Inscricao_CIPA_${nome}${chapa?`_Chapa_${chapa}`:""}`;
+      };
+      const montarFolhaComNomeOriginal=montarFolha;
+      montarFolha=function(registro){
+        montarFolhaComNomeOriginal(registro);
+        window.__cipaTituloPdf=criarTituloPdf(registro);
+      };
       const campoAcesso=document.getElementById("chapaAcesso");
       campoAcesso.type="text";
       campoAcesso.placeholder="Digite sua chapa";
@@ -203,6 +217,7 @@
       const tela=document.getElementById("finalizacaoPdf");
       tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>Sua ficha será aberta para salvar em PDF. Ao fechar, você retornará à página inicial.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando sua ficha...</strong></div>';
       const retornarParaPaginaInicial=()=>{
+        document.title=tituloAplicacao;
         if(!window.__cipaRetornoPendente)return;
         window.__cipaRetornoPendente=false;
         document.getElementById("aplicacao").classList.add("oculto");
@@ -233,6 +248,7 @@
           painel.classList.add("oculto");
           painel.classList.remove("concluido");
           window.__cipaRetornoPendente=deveRetornar;
+          document.title=window.__cipaTituloPdf||tituloAplicacao;
           window.print();
           if(deveRetornar)setTimeout(retornarParaPaginaInicial,400);
         },duracao);
