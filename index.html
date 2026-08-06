@@ -185,6 +185,14 @@
       .logoPdf img{background:#fff!important;filter:none!important}
       .seloPdf{background:#fff!important;border:2px solid #000!important;color:#000!important}
     }
+    @page{size:A4 portrait;margin:18mm 14mm 14mm}
+    @media print{
+      html,body{width:auto!important;min-width:0!important;margin:0!important;padding:0!important;overflow:visible!important}
+      .folha{width:100%!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important;overflow:hidden!important;break-inside:avoid-page;page-break-inside:avoid}
+      .cabecalhoPdf{width:100%!important;min-width:0!important;box-sizing:border-box!important}
+      .cabecalhoPdf>*{min-width:0!important}
+      .logoPdf img{width:auto!important;max-width:90%!important;max-height:52px!important;object-fit:contain!important}
+    }
   </style>
   <script>
     (function prepararAcessoEFesta(){
@@ -193,14 +201,41 @@
       campoAcesso.placeholder="Digite sua chapa";
       campoAcesso.setAttribute("aria-label","Chapa de acesso");
       const tela=document.getElementById("finalizacaoPdf");
-      tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>Comemore: sua ficha está pronta.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando a comemoração...</strong></div>';
+      tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>Sua ficha será aberta para salvar em PDF. Ao fechar, você retornará à página inicial.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando sua ficha...</strong></div>';
+      const retornarParaPaginaInicial=()=>{
+        if(!window.__cipaRetornoPendente)return;
+        window.__cipaRetornoPendente=false;
+        document.getElementById("aplicacao").classList.add("oculto");
+        document.getElementById("acesso").classList.remove("oculto");
+        document.getElementById("folha").innerHTML="";
+        document.getElementById("formulario").reset();
+        document.getElementById("aviso").classList.add("oculto");
+        const chapaAtiva=document.getElementById("chapaAtiva");
+        if(chapaAtiva)chapaAtiva.remove();
+        const campo=document.getElementById("chapaAcesso");
+        campo.value="";
+        document.getElementById("erroAcesso").textContent="";
+        chapaSessao="";
+        acessoHistorico=false;
+        editando=null;
+        limparAssinatura();
+        scrollTo({top:0,left:0,behavior:"auto"});
+        requestAnimationFrame(()=>campo.focus());
+      };
+      window.addEventListener("afterprint",retornarParaPaginaInicial);
       finalizarComEmpilhadeira=function(){
-        const painel=document.getElementById("finalizacaoPdf"),status=document.getElementById("statusPdf"),duracao=matchMedia("(prefers-reduced-motion: reduce)").matches?900:3000;
+        const painel=document.getElementById("finalizacaoPdf"),status=document.getElementById("statusPdf"),duracao=matchMedia("(prefers-reduced-motion: reduce)").matches?900:3000,deveRetornar=!acessoHistorico;
         painel.classList.remove("oculto","concluido");
         status.textContent="Inscrição concluída com sucesso!";
         void painel.offsetWidth;
-        setTimeout(()=>{painel.classList.add("concluido");status.textContent="PDF pronto para baixar!"},duracao-450);
-        setTimeout(()=>{painel.classList.add("oculto");painel.classList.remove("concluido");window.print()},duracao);
+        setTimeout(()=>{painel.classList.add("concluido");status.textContent="Ficha pronta para salvar em PDF!"},duracao-450);
+        setTimeout(()=>{
+          painel.classList.add("oculto");
+          painel.classList.remove("concluido");
+          window.__cipaRetornoPendente=deveRetornar;
+          window.print();
+          if(deveRetornar)setTimeout(retornarParaPaginaInicial,400);
+        },duracao);
       };
     })();
   </script>
