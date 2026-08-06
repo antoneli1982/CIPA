@@ -154,9 +154,9 @@
   <script>
     (function prepararAcessoEFesta(){
       const campoAcesso=document.getElementById("chapaAcesso");
-      campoAcesso.type="password";
+      campoAcesso.type="text";
       campoAcesso.placeholder="Digite sua chapa";
-      campoAcesso.setAttribute("aria-label","Chapa de acesso oculta");
+      campoAcesso.setAttribute("aria-label","Chapa de acesso");
       const tela=document.getElementById("finalizacaoPdf");
       tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>Comemore: sua ficha está pronta.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando a comemoração...</strong></div>';
       finalizarComEmpilhadeira=function(){
