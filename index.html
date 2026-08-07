@@ -115,9 +115,11 @@
     async function sincronizarPendentesUsuario(chapa){if(!firebaseCipa)return;try{await migrarRegistrosLocais(registros.filter(r=>r.chapa===chapa),chapa)}catch(erro){statusNuvem("Pendente","erro")}}
     async function iniciarSincronizacao(){if(firebaseCipa||!window.__CIPA_FIREBASE)return;firebaseCipa=window.__CIPA_FIREBASE;statusNuvem("Conectado","ok");firebaseCipa.onSnapshot(firebaseCipa.collection(firebaseCipa.db,"cipa_candidatos"),foto=>{candidatosRemotos=foto.docs.map(d=>({chapa:d.id,...d.data()}));reconstruirBase()},()=>statusNuvem("Sem conexão","erro"));if(chapaSessao)acessoHistorico?sincronizarHistoricoAdmin():sincronizarPendentesUsuario(chapaSessao)}
     function avisar(texto){$("aviso").classList.remove("oculto");$("aviso").querySelector("span").textContent=texto}
-    function mostrarChapaAtiva(){let painel=$("chapaAtiva");if(!painel){painel=document.createElement("div");painel.id="chapaAtiva";painel.className="chapaAtiva";painel.innerHTML='<span>Chapa ativa</span><strong></strong>';$("temaToggle").before(painel)}painel.querySelector("strong").textContent=chapaSessao==="1111111"?"Administrador":chapaSessao}
+    function senhaAdministradorHoje(){return new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",year:"2-digit"}).format(new Date()).replace(/\D/g,"")}
+    function ehSenhaAdministrador(valor){return valor===senhaAdministradorHoje()}
+    function mostrarChapaAtiva(){let painel=$("chapaAtiva");if(!painel){painel=document.createElement("div");painel.id="chapaAtiva";painel.className="chapaAtiva";painel.innerHTML='<span>Chapa ativa</span><strong></strong>';$("temaToggle").before(painel)}painel.querySelector("strong").textContent=acessoHistorico?"Administrador":chapaSessao}
     function preencherPelaChapa(chapa){const c=baseCandidatos.find(x=>x.chapa===chapa);$("dadosEncontrados").classList.toggle("oculto",!c);if(!c)return false;$("candidato").value=c.nome||"";$("setor").value=c.setor||"";$("cargo").value=c.cargo||"";$("turno").value=c.turno||"";$("dadosEncontrados").textContent="Dados localizados e preenchidos automaticamente pela chapa Volkswagen.";return true}
-    function liberarAcesso(chapa){chapaSessao=chapa;acessoHistorico=chapa==="1111111";$("abaFormulario").classList.toggle("oculto",acessoHistorico);$("abaFormulario").hidden=acessoHistorico;$("abaHistorico").classList.toggle("oculto",!acessoHistorico);$("abaBase").classList.toggle("oculto",!acessoHistorico);$("acesso").classList.add("oculto");$("aplicacao").classList.remove("oculto");mostrarChapaAtiva();limpar();abrir(acessoHistorico?"history":"form");if(firebaseCipa)acessoHistorico?sincronizarHistoricoAdmin():sincronizarPendentesUsuario(chapa);requestAnimationFrame(ajustarCanvas)}
+    function liberarAcesso(chapa){chapaSessao=chapa;acessoHistorico=ehSenhaAdministrador(chapa);$("abaFormulario").classList.toggle("oculto",acessoHistorico);$("abaFormulario").hidden=acessoHistorico;$("abaHistorico").classList.toggle("oculto",!acessoHistorico);$("abaBase").classList.toggle("oculto",!acessoHistorico);$("acesso").classList.add("oculto");$("aplicacao").classList.remove("oculto");mostrarChapaAtiva();limpar();abrir(acessoHistorico?"history":"form");if(firebaseCipa)acessoHistorico?sincronizarHistoricoAdmin():sincronizarPendentesUsuario(chapa);requestAnimationFrame(ajustarCanvas)}
     function limpar(){$("formulario").reset();$("numero").value=proximoNumero();$("data").value=hoje();$("chapa").value=acessoHistorico?"":chapaSessao;$("chapa").readOnly=!acessoHistorico;$("dadosEncontrados").classList.add("oculto");if(!acessoHistorico)preencherPelaChapa(chapaSessao);editando=null;limparAssinatura();$("tituloFormulario").textContent="Dados do candidato";$("textoSalvar").textContent="Finalizar inscrição";$("cancelar").classList.add("oculto")}
     function abrir(qual){if(qual!=="form"&&!acessoHistorico)return;if(acessoHistorico&&qual==="form"&&!editando)qual="history";const form=qual==="form",historico=qual==="history",base=qual==="base";$("formulario").classList.toggle("oculto",!form);$("historico").classList.toggle("oculto",!historico);$("baseVolkswagen").classList.toggle("oculto",!base);$("abaFormulario").classList.toggle("ativa",form);$("abaHistorico").classList.toggle("ativa",historico);$("abaBase").classList.toggle("ativa",base);if(historico)renderizar();if(base)renderizarBase()}
     function proximoNumero(){const d=new Date(),dois=n=>String(n).padStart(2,"0");return `${dois(d.getDate())}${dois(d.getHours())}${dois(d.getMinutes())}${dois(d.getSeconds())}`}
@@ -152,7 +154,7 @@
     $("temaToggle").onclick=()=>{document.body.classList.toggle("tema-claro");const claro=document.body.classList.contains("tema-claro");$("temaToggle").textContent=claro?"☾":"☀";localStorage.setItem("temaCipaSese",claro?"claro":"escuro")};
     if(localStorage.getItem("temaCipaSese")==="claro"){document.body.classList.add("tema-claro");$("temaToggle").textContent="☾"}
     $("chapaAcesso").addEventListener("input",e=>{e.target.value=e.target.value.replace(/\D/g,"").slice(0,7);$("erroAcesso").textContent=""});
-    $("formAcesso").addEventListener("submit",async e=>{e.preventDefault();const chapa=$("chapaAcesso").value,botao=e.submitter||e.currentTarget.querySelector('button[type="submit"]');if(chapa.length!==7){$("erroAcesso").textContent="Digite uma chapa com 7 números.";return}if(chapa==="1111111"){liberarAcesso(chapa);return}if(botao)botao.disabled=true;$("erroAcesso").textContent="Verificando inscrição...";try{await aguardarFirebase();await migrarRegistrosLocais(registros.filter(r=>r.chapa===chapa),chapa);if(await buscarInscricaoDaChapa(chapa)){$("erroAcesso").textContent=MENSAGEM_DUPLICIDADE;return}$("erroAcesso").textContent="";liberarAcesso(chapa)}catch(erro){$("erroAcesso").textContent="Não foi possível verificar a inscrição agora. Confira sua conexão e tente novamente.";statusNuvem("Sem conexão","erro")}finally{if(botao)botao.disabled=false}});
+    $("formAcesso").addEventListener("submit",async e=>{e.preventDefault();const chapa=$("chapaAcesso").value,botao=e.submitter||e.currentTarget.querySelector('button[type="submit"]');if(ehSenhaAdministrador(chapa)){liberarAcesso(chapa);return}if(chapa.length!==7){$("erroAcesso").textContent="Digite uma chapa com 7 números.";return}if(botao)botao.disabled=true;$("erroAcesso").textContent="Verificando inscrição...";try{await aguardarFirebase();await migrarRegistrosLocais(registros.filter(r=>r.chapa===chapa),chapa);if(await buscarInscricaoDaChapa(chapa)){$("erroAcesso").textContent=MENSAGEM_DUPLICIDADE;return}$("erroAcesso").textContent="";liberarAcesso(chapa)}catch(erro){$("erroAcesso").textContent="Não foi possível verificar a inscrição agora. Confira sua conexão e tente novamente.";statusNuvem("Sem conexão","erro")}finally{if(botao)botao.disabled=false}});
     $("acesso").classList.remove("oculto");$("aplicacao").classList.add("oculto");$("chapaAcesso").value="";
   </script>
   <script>
@@ -185,13 +187,14 @@
       .logoPdf img{background:#fff!important;filter:none!important}
       .seloPdf{background:#fff!important;border:2px solid #000!important;color:#000!important}
     }
-    @page{size:A4 portrait;margin:18mm 14mm 14mm}
+    @page{size:A4 portrait;margin:16mm 12mm 12mm}
     @media print{
       html,body{width:auto!important;min-width:0!important;margin:0!important;padding:0!important;overflow:visible!important}
-      .folha{width:100%!important;max-width:100%!important;margin:0 auto!important;box-sizing:border-box!important;overflow:hidden!important;break-inside:avoid-page;page-break-inside:avoid}
+      .folha{width:100%!important;max-width:100%!important;height:auto!important;max-height:none!important;margin:0 auto!important;box-sizing:border-box!important;overflow:visible!important;break-inside:auto!important;page-break-inside:auto!important}
       .cabecalhoPdf{width:100%!important;min-width:0!important;box-sizing:border-box!important}
       .cabecalhoPdf>*{min-width:0!important}
       .logoPdf img{width:auto!important;max-width:90%!important;max-height:52px!important;object-fit:contain!important}
+      .cabecalhoPdf,.camposPdf>div,.assinatura,.rodapePdf{break-inside:avoid-page;page-break-inside:avoid}
     }
   </style>
   <script>
@@ -238,19 +241,25 @@
         requestAnimationFrame(()=>campo.focus());
       };
       window.addEventListener("afterprint",retornarParaPaginaInicial);
+      const aguardarImagensDaFicha=async()=>{
+        const imagens=[...document.querySelectorAll("#folha img")];
+        await Promise.all(imagens.map(imagem=>imagem.complete?Promise.resolve():new Promise(resolve=>{imagem.addEventListener("load",resolve,{once:true});imagem.addEventListener("error",resolve,{once:true})})));
+        if(document.fonts?.ready)await document.fonts.ready;
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      };
       finalizarComEmpilhadeira=function(){
         const painel=document.getElementById("finalizacaoPdf"),status=document.getElementById("statusPdf"),duracao=matchMedia("(prefers-reduced-motion: reduce)").matches?900:3000,deveRetornar=!acessoHistorico;
         painel.classList.remove("oculto","concluido");
         status.textContent="Inscrição concluída com sucesso!";
         void painel.offsetWidth;
         setTimeout(()=>{painel.classList.add("concluido");status.textContent="Ficha pronta para salvar em PDF!"},duracao-450);
-        setTimeout(()=>{
+        setTimeout(async()=>{
           painel.classList.add("oculto");
           painel.classList.remove("concluido");
           window.__cipaRetornoPendente=deveRetornar;
           document.title=window.__cipaTituloPdf||tituloAplicacao;
+          await aguardarImagensDaFicha();
           window.print();
-          if(deveRetornar)setTimeout(retornarParaPaginaInicial,400);
         },duracao);
       };
     })();
