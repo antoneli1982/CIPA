@@ -233,7 +233,7 @@
       campoAcesso.placeholder="Digite sua chapa";
       campoAcesso.setAttribute("aria-label","Chapa de acesso");
       const tela=document.getElementById("finalizacaoPdf");
-      tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>O documento já foi preparado. No celular, toque em salvar para escolher onde guardar ou compartilhar.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando sua ficha...</strong><div class="acoesPdfMobile"><button id="salvarPdfMobile" class="principalPdf" type="button">Salvar ou compartilhar PDF</button><button id="imprimirPdfFallback" type="button">Abrir impressão</button><button id="voltarInicioPdf" type="button">Voltar ao início</button></div><small class="ajudaPdfMobile">Se o navegador não oferecer o download, use “Abrir impressão” e selecione “Salvar como PDF”.</small></div>';
+      tela.innerHTML='<div class="finalizacaoCartao"><h2>Inscrição concluída!</h2><p>O PDF será gerado automaticamente. Se o celular bloquear o download, use uma das opções abaixo.</p><div class="festaRojes" aria-hidden="true"><i class="rojao"></i><i class="rojao"></i><i class="rojao"></i><i class="explosao"></i><i class="explosao"></i><i class="explosao"></i></div><div class="progressoPdf"><span></span></div><strong id="statusPdf" class="statusPdf">Preparando sua ficha...</strong><div class="acoesPdfMobile"><button id="salvarPdfMobile" class="principalPdf" type="button">Baixar ou compartilhar novamente</button><button id="imprimirPdfFallback" type="button">Abrir impressão</button><button id="voltarInicioPdf" type="button">Voltar ao início</button></div><small class="ajudaPdfMobile">O arquivo é verificado antes do download. Se o navegador não salvar, use “Abrir impressão” e selecione “Salvar como PDF”.</small></div>';
       const retornarParaPaginaInicial=()=>{
         document.title=tituloAplicacao;
         if(!window.__cipaRetornoPendente)return;
@@ -262,7 +262,9 @@
       const criarDocumentoPdf=registro=>{
         const JsPdf=window.jspdf?.jsPDF;
         if(!JsPdf)throw new Error("GERADOR_INDISPONIVEL");
-        const pdf=new JsPdf({orientation:"portrait",unit:"mm",format:"a4",compress:true,putOnlyUsedFonts:true});
+        // Sem compressão e com as fontes-base incorporadas: alguns visualizadores
+        // móveis exibem páginas vazias quando recebem streams muito compactados.
+        const pdf=new JsPdf({orientation:"portrait",unit:"mm",format:"a4",compress:false,putOnlyUsedFonts:false,precision:4});
         const azul=[22,61,255],azulEscuro=[20,38,82],cinza=[91,105,137],preto=[18,24,38];
         const margem=14,largura=182;
         pdf.setProperties({title:window.__cipaTituloPdf||"Inscricao_CIPA",subject:"Ficha individual de inscrição CIPA",creator:"SESÉ Logística"});
@@ -301,13 +303,41 @@
         return pdf;
       };
       const estaEmDispositivoMovel=()=>matchMedia("(pointer:coarse)").matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const ehIos=()=>/iPad|iPhone|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+      const criarArquivoPdf=registro=>{
+        const pdf=criarDocumentoPdf(registro);
+        const buffer=pdf.output("arraybuffer");
+        const bytes=new Uint8Array(buffer);
+        const inicio=String.fromCharCode(...bytes.subarray(0,5));
+        const fim=String.fromCharCode(...bytes.subarray(Math.max(0,bytes.length-32)));
+        if(bytes.length<1500||inicio!=="%PDF-"||!fim.includes("%%EOF"))throw new Error("PDF_INCOMPLETO");
+        return {blob:new Blob([bytes],{type:"application/pdf"}),nome:`${criarTituloPdf(registro)}.pdf`};
+      };
+      const entregarArquivoPdf=(blob,nome)=>{
+        const url=URL.createObjectURL(blob);
+        if(ehIos()){
+          // O iOS ignora downloads programáticos em parte das versões. Navegar
+          // para o Blob validado abre o PDF real, em vez de uma aba vazia.
+          window.location.assign(url);
+          return {navegou:true};
+        }
+        const link=document.createElement("a");
+        link.href=url;link.download=nome;link.rel="noopener";link.style.display="none";
+        document.body.appendChild(link);link.click();link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),120000);
+        return {navegou:false};
+      };
+      const salvarPdfAutomaticamente=registro=>{
+        if(!registro)throw new Error("REGISTRO_INDISPONIVEL");
+        const {blob,nome}=criarArquivoPdf(registro);
+        return entregarArquivoPdf(blob,nome);
+      };
       const salvarPdfComGesto=async(registro,{retornar=false,botao=null,status=null}={})=>{
         if(!registro)return false;
-        const nome=`${criarTituloPdf(registro)}.pdf`;
         if(botao)botao.disabled=true;
         if(status)status.textContent="Gerando o arquivo PDF...";
         try{
-          const pdf=criarDocumentoPdf(registro),blob=pdf.output("blob");
+          const {blob,nome}=criarArquivoPdf(registro);
           let compartilhado=false;
           if(estaEmDispositivoMovel()&&navigator.share&&typeof File!=="undefined"){
             const arquivo=new File([blob],nome,{type:"application/pdf",lastModified:Date.now()});
@@ -317,12 +347,11 @@
             }
           }
           if(!compartilhado){
-            const url=URL.createObjectURL(blob),link=document.createElement("a");
-            link.href=url;link.download=nome;link.rel="noopener";document.body.appendChild(link);link.click();link.remove();
-            setTimeout(()=>URL.revokeObjectURL(url),60000);
+            const entrega=entregarArquivoPdf(blob,nome);
+            if(retornar&&!entrega.navegou)setTimeout(retornarParaPaginaInicial,900);
           }
           if(status)status.textContent="PDF gerado com sucesso!";
-          if(retornar)setTimeout(retornarParaPaginaInicial,900);
+          if(retornar&&compartilhado)setTimeout(retornarParaPaginaInicial,900);
           return true;
         }catch(erro){
           if(erro?.name==="AbortError"){if(status)status.textContent="Salvamento cancelado. Toque novamente quando quiser.";return false}
@@ -356,11 +385,22 @@
         status.textContent="Inscrição concluída com sucesso!";
         painel.querySelectorAll(".acoesPdfMobile button").forEach(botao=>botao.disabled=true);
         void painel.offsetWidth;
-        setTimeout(()=>{painel.classList.add("concluido");status.textContent="Ficha pronta para salvar em PDF!"},duracao-450);
-        setTimeout(()=>{
+        setTimeout(()=>{painel.classList.add("concluido");status.textContent="Validando o arquivo PDF..."},duracao-450);
+        setTimeout(async()=>{
           window.__cipaRetornoPendente=deveRetornar;
-          painel.querySelectorAll(".acoesPdfMobile button").forEach(botao=>botao.disabled=false);
-          document.getElementById("salvarPdfMobile").focus();
+          try{
+            status.textContent="Gerando o PDF automaticamente...";
+            const entrega=salvarPdfAutomaticamente(window.__cipaRegistroPdf);
+            status.textContent="PDF gerado e verificado com sucesso!";
+            painel.querySelectorAll(".acoesPdfMobile button").forEach(botao=>botao.disabled=false);
+            // Mantém as alternativas visíveis por alguns segundos antes de
+            // retornar à tela inicial, caso o navegador silencie o download.
+            if(deveRetornar&&!entrega.navegou)setTimeout(retornarParaPaginaInicial,4500);
+          }catch(erro){
+            status.textContent="O celular bloqueou a geração automática. Toque em baixar novamente.";
+            painel.querySelectorAll(".acoesPdfMobile button").forEach(botao=>botao.disabled=false);
+            document.getElementById("salvarPdfMobile").focus();
+          }
         },duracao);
       };
     })();
