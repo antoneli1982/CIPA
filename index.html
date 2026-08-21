@@ -405,5 +405,116 @@
       };
     })();
   </script>
+  <style>
+    .acessoCartao.encerrado{text-align:center}
+    .acessoCartao.encerrado .acessoMarca{margin-left:auto;margin-right:auto}
+    .iconeEncerrado{width:74px;height:74px;margin:0 auto 20px;display:grid;place-items:center;border:2px solid #278036;border-radius:50%;color:#fff;background:linear-gradient(145deg,#0750ae,#278036);font-size:34px;font-weight:800;box-shadow:0 12px 30px #0750ae30}
+    .acessoCartao.encerrado h2{margin:0 0 12px;color:#073a80;font-size:clamp(27px,5vw,38px);line-height:1.08;letter-spacing:-.035em}
+    .acessoCartao.encerrado .mensagemEncerrada{max-width:480px;margin:0 auto!important;color:#526253!important;font-size:14px;line-height:1.7}
+    .acessoCartao.encerrado .periodoEncerrado{display:inline-flex;align-items:center;justify-content:center;margin:22px auto 0;padding:9px 14px;border:1px solid #b8c8aa;border-radius:999px;color:#315137;background:#edf6e9;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .abrirAdministracao{margin-top:28px!important;border:1px solid #b8c8aa!important;color:#315137!important;background:#fffdf7!important;box-shadow:none!important;font-size:11px}
+    .painelAdministrativoEncerrado{margin-top:16px;padding:18px;border:1px solid #cbd6c0;border-radius:13px;background:#f4f8ef;text-align:left}
+    .painelAdministrativoEncerrado[hidden]{display:none}
+    .painelAdministrativoEncerrado button{margin-top:13px!important}
+    .painelAdministrativoEncerrado .erroAcesso{margin-bottom:0}
+    @media(max-width:740px){.acessoCartao.encerrado{padding-top:34px!important}.iconeEncerrado{width:64px;height:64px;font-size:29px}.acessoCartao.encerrado h2{font-size:29px}}
+  </style>
+  <script>
+    (function encerrarNovasInscricoes(){
+      const MENSAGEM_ENCERRAMENTO="INSCRIÇÕES ENCERRADAS";
+      const formularioAcesso=document.getElementById("formAcesso");
+      const campoChapa=document.getElementById("chapaAcesso");
+      const erroAcesso=document.getElementById("erroAcesso");
+      const logo=formularioAcesso?.querySelector(".acessoMarca");
+      if(!formularioAcesso||!campoChapa||!erroAcesso)return;
+
+      formularioAcesso.classList.add("encerrado");
+      formularioAcesso.replaceChildren();
+      if(logo)formularioAcesso.appendChild(logo);
+
+      const icone=document.createElement("div");
+      icone.className="iconeEncerrado";
+      icone.setAttribute("aria-hidden","true");
+      icone.textContent="✓";
+
+      const titulo=document.createElement("h2");
+      titulo.textContent=MENSAGEM_ENCERRAMENTO;
+
+      const mensagem=document.createElement("p");
+      mensagem.className="mensagemEncerrada";
+      mensagem.textContent="O período de inscrições para a CIPA — Gestão 2026/2027 foi encerrado. Não serão aceitas novas inscrições.";
+
+      const periodo=document.createElement("span");
+      periodo.className="periodoEncerrado";
+      periodo.textContent="Período de candidatura finalizado";
+
+      const abrirAdministracao=document.createElement("button");
+      abrirAdministracao.type="button";
+      abrirAdministracao.className="abrirAdministracao";
+      abrirAdministracao.textContent="Acesso administrativo";
+      abrirAdministracao.setAttribute("aria-expanded","false");
+
+      const painelAdministrativo=document.createElement("div");
+      painelAdministrativo.className="painelAdministrativoEncerrado";
+      painelAdministrativo.hidden=true;
+      const rotulo=document.createElement("label");
+      rotulo.innerHTML="<span>Senha administrativa</span>";
+      campoChapa.value="";
+      campoChapa.placeholder="Digite a senha";
+      campoChapa.setAttribute("aria-label","Senha administrativa");
+      rotulo.appendChild(campoChapa);
+      const entrar=document.createElement("button");
+      entrar.type="submit";
+      entrar.textContent="Entrar no painel";
+      painelAdministrativo.append(rotulo,entrar,erroAcesso);
+
+      const rodape=document.createElement("div");
+      rodape.className="acessoRodape";
+      rodape.textContent="SESÉ Logística • CIPA • Segurança em primeiro lugar";
+
+      formularioAcesso.append(icone,titulo,mensagem,periodo,abrirAdministracao,painelAdministrativo,rodape);
+
+      abrirAdministracao.addEventListener("click",()=>{
+        painelAdministrativo.hidden=!painelAdministrativo.hidden;
+        abrirAdministracao.setAttribute("aria-expanded",String(!painelAdministrativo.hidden));
+        erroAcesso.textContent="";
+        if(!painelAdministrativo.hidden)requestAnimationFrame(()=>campoChapa.focus());
+      });
+
+      formularioAcesso.addEventListener("submit",evento=>{
+        if(ehSenhaAdministrador(campoChapa.value))return;
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        erroAcesso.textContent=MENSAGEM_ENCERRAMENTO;
+        campoChapa.value="";
+      },true);
+
+      const formularioInscricao=document.getElementById("formulario");
+      formularioInscricao?.addEventListener("submit",evento=>{
+        if(acessoHistorico&&editando)return;
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        avisar(MENSAGEM_ENCERRAMENTO+" — não é possível registrar uma nova candidatura.");
+      },true);
+
+      const criarInscricaoExclusivaOriginal=criarInscricaoExclusiva;
+      criarInscricaoExclusiva=async function(){
+        const erro=new Error(MENSAGEM_ENCERRAMENTO);
+        erro.codigo="INSCRICOES_ENCERRADAS";
+        throw erro;
+      };
+
+      const liberarAcessoOriginal=liberarAcesso;
+      liberarAcesso=function(chapa){
+        if(!ehSenhaAdministrador(chapa)){
+          document.getElementById("aplicacao").classList.add("oculto");
+          document.getElementById("acesso").classList.remove("oculto");
+          erroAcesso.textContent=MENSAGEM_ENCERRAMENTO;
+          return;
+        }
+        return liberarAcessoOriginal(chapa);
+      };
+    })();
+  </script>
 </body>
 </html>
