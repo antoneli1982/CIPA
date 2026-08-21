@@ -411,21 +411,30 @@
   </style>
   <script>
     (function encerrarNovasInscricoes(){
-      const MENSAGEM_ENCERRAMENTO="INSCRIÇÕES ENCERRADAS";
+      const MENSAGEM_ENCERRAMENTO="INSCRIÇÃO ENCERRADA";
+      const formularioAcesso=document.getElementById("formAcesso");
       const campoChapa=document.getElementById("chapaAcesso");
       const erroAcesso=document.getElementById("erroAcesso");
-      if(!campoChapa||!erroAcesso)return;
+      if(!formularioAcesso||!campoChapa||!erroAcesso)return;
 
       campoChapa.placeholder="Digite sua chapa";
       campoChapa.setAttribute("aria-label","Chapa de acesso");
       campoChapa.addEventListener("input",()=>erroAcesso.classList.remove("inscricoesEncerradas"));
+
+      formularioAcesso.addEventListener("submit",evento=>{
+        if(ehSenhaAdministrador(campoChapa.value))return;
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        erroAcesso.classList.add("inscricoesEncerradas");
+        erroAcesso.textContent=MENSAGEM_ENCERRAMENTO;
+      },true);
 
       const formularioInscricao=document.getElementById("formulario");
       formularioInscricao?.addEventListener("submit",evento=>{
         if(acessoHistorico&&editando)return;
         evento.preventDefault();
         evento.stopImmediatePropagation();
-        avisar(MENSAGEM_ENCERRAMENTO+" — não é possível registrar uma nova candidatura.");
+        avisar(MENSAGEM_ENCERRAMENTO);
       },true);
 
       criarInscricaoExclusiva=async function(){
@@ -440,7 +449,7 @@
           document.getElementById("aplicacao").classList.add("oculto");
           document.getElementById("acesso").classList.remove("oculto");
           erroAcesso.classList.add("inscricoesEncerradas");
-          erroAcesso.textContent=MENSAGEM_ENCERRAMENTO+" — não é possível realizar uma nova candidatura.";
+          erroAcesso.textContent=MENSAGEM_ENCERRAMENTO;
           return;
         }
         return liberarAcessoOriginal(chapa);
